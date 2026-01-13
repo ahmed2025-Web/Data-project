@@ -119,7 +119,7 @@ if page == "🏠 Accueil":
     
     st.markdown("## Approche Méthodologique")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     
     with col1:
         st.markdown("""
@@ -135,6 +135,32 @@ if page == "🏠 Accueil":
         - Identifier des profils de banques
         - Analyser stratégies différenciées
         - Découvrir 4 groupes distincts
+        """)
+    
+    with col3:
+        st.markdown("""
+        **Analyse en Composantes Principales (ACP)**
+        - Réduire la dimensionnalité (7D → 2D)
+        - Visualiser les profils de banques
+        - Interpréter les corrélations variables
+        """)
+    
+    col4, col5 = st.columns(2)
+    
+    with col4:
+        st.markdown("""
+        **ANOVA (Analyse de Variance)**
+        - Comparer les moyennes entre clusters
+        - Valider les différences inter-groupes
+        - Quantifier l'effet du clustering
+        """)
+    
+    with col5:
+        st.markdown("""
+        **Analyse Géographique par Pays**
+        - Évaluer l'impact régional de la crise
+        - Comparer les stratégies par zone
+        - Identifier les comportements nationaux
         """)
 
 # ============================================================================
