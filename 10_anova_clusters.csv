@@ -1,0 +1,8 @@
+Variable,F-statistic,p-value,Significatif (p<0.05)
+ass_total,5126.833189979535,0.0,✅ OUI
+ass_trade,6267.872071779504,0.0,✅ OUI
+inc_trade,3938.369193489101,0.0,✅ OUI
+in_roa,1790.7883585212476,0.0,✅ OUI
+rt_rwa,11.24816787757143,2.3171858238317068e-07,✅ OUI
+in_roe,1071.9690134274174,0.0,✅ OUI
+in_trade,6802.252360922783,0.0,✅ OUI
