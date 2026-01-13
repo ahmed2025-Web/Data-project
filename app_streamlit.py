@@ -209,7 +209,25 @@ elif page == "🔬 Analyse Statistique":
     st.title("🔬 Résultats des Tests Statistiques")
     st.markdown("Comparaison Pré-crise vs Post-crise (t-test de Student)")
     
-    st.markdown("## 📋 Tableau Récapitulatif des Tests")
+    st.markdown("## 📋 Hypothèses du Test")
+    st.markdown("""
+    **H₀ (Hypothèse nulle):** 
+    > Il n'existe PAS de différence significative entre les moyennes pré et post-crise
+    > 
+    > μ_pré-crise = μ_post-crise
+    
+    **H₁ (Hypothèse alternative):** 
+    > Il existe une différence significative entre les moyennes
+    > 
+    > μ_pré-crise ≠ μ_post-crise
+    
+    **Seuil de significativité:** α = 0.05
+    - Si **p-value < 0.05** → On rejette H₀ (différence **SIGNIFICATIVE** ✅)
+    - Si **p-value ≥ 0.05** → On ne rejette pas H₀ (pas de preuve suffisante ❌)
+    """)
+    
+    st.markdown("---")
+    st.markdown("## 📊 Tableau Récapitulatif des Tests")
     
     # Afficher le tableau
     display_cols = ['Variable', 'Moyenne Pré-crise', 'Moyenne Post-crise', 
@@ -240,18 +258,54 @@ elif page == "🔬 Analyse Statistique":
     
     # Visualisation
     st.markdown("## 📊 Distribution Graphique")
-    fig, ax = plt.subplots(figsize=(10, 5))
     
     pre_data = df_clean[df_clean['periode'] == 'Pré-crise'][selected_var].dropna()
     post_data = df_clean[df_clean['periode'] == 'Post-crise'][selected_var].dropna()
     
-    ax.hist(pre_data, alpha=0.5, label='Pré-crise', bins=30)
-    ax.hist(post_data, alpha=0.5, label='Post-crise', bins=30)
-    ax.set_xlabel(selected_var)
-    ax.set_ylabel('Fréquence')
-    ax.set_title(f'Distribution de {selected_var}')
-    ax.legend()
-    st.pyplot(fig, use_container_width=True)
+    # Créer 2 graphes côte à côte pour meilleure visibilité
+    col_graph1, col_graph2 = st.columns(2)
+    
+    # GRAPHE 1: Histogrammes côte à côte (side-by-side)
+    with col_graph1:
+        fig1, ax1 = plt.subplots(figsize=(8, 5))
+        
+        # Créer les bins compatibles
+        bins = np.linspace(
+            min(pre_data.min(), post_data.min()),
+            max(pre_data.max(), post_data.max()),
+            30
+        )
+        
+        ax1.hist(pre_data, bins=bins, alpha=0.6, label='Pré-crise', color='#1f77b4', edgecolor='black', linewidth=0.5)
+        ax1.hist(post_data, bins=bins, alpha=0.6, label='Post-crise', color='#ff7f0e', edgecolor='black', linewidth=0.5)
+        ax1.set_xlabel(selected_var, fontsize=11)
+        ax1.set_ylabel('Nombre de banques', fontsize=11)
+        ax1.set_title(f'Histogrammes superposés: {selected_var}', fontweight='bold')
+        ax1.legend(fontsize=10)
+        ax1.grid(True, alpha=0.3, axis='y')
+        st.pyplot(fig1, use_container_width=True)
+    
+    # GRAPHE 2: Comparaison des distributions (deux sous-histogrammes)
+    with col_graph2:
+        fig2, (ax2a, ax2b) = plt.subplots(2, 1, figsize=(8, 5), sharex=True)
+        
+        # Pré-crise
+        ax2a.hist(pre_data, bins=30, alpha=0.7, color='#1f77b4', edgecolor='black', linewidth=0.5)
+        ax2a.set_ylabel('Pré-crise', fontsize=10, fontweight='bold')
+        ax2a.grid(True, alpha=0.3, axis='y')
+        ax2a.text(0.02, 0.95, f'n={len(pre_data):,}', transform=ax2a.transAxes, 
+                 verticalalignment='top', bbox=dict(boxstyle='round', facecolor='#1f77b4', alpha=0.3))
+        
+        # Post-crise
+        ax2b.hist(post_data, bins=30, alpha=0.7, color='#ff7f0e', edgecolor='black', linewidth=0.5)
+        ax2b.set_ylabel('Post-crise', fontsize=10, fontweight='bold')
+        ax2b.set_xlabel(selected_var, fontsize=11)
+        ax2b.grid(True, alpha=0.3, axis='y')
+        ax2b.text(0.02, 0.95, f'n={len(post_data):,}', transform=ax2b.transAxes,
+                 verticalalignment='top', bbox=dict(boxstyle='round', facecolor='#ff7f0e', alpha=0.3))
+        
+        fig2.suptitle(f'Distributions séparées: {selected_var}', fontsize=12, fontweight='bold', y=1.00)
+        st.pyplot(fig2, use_container_width=True)
 
 # ============================================================================
 # PAGE 4: DÉTAIL DES CALCULS
@@ -272,15 +326,19 @@ elif page == "📐 Détail des Calculs":
         var_info = tests_df[tests_df['Variable'] == var_selected].iloc[0]
         
         st.markdown(f"""
-        **Pré-crise:**
+        **Pré-crise (n = {int(var_info['n_Pré-crise'])}):**
         - Moyenne (μ₁): {var_info['Moyenne Pré-crise']:.6f}
-        - Écart-type: (calculé)
-        - n₁: 1,441 observations
+        - Écart-type (σ₁): {var_info['Écart-type Pré-crise']:.6f}
+        - Erreur type: {var_info['Écart-type Pré-crise']/np.sqrt(var_info['n_Pré-crise']):.6f}
         
-        **Post-crise:**
+        **Post-crise (n = {int(var_info['n_Post-crise'])}):**
         - Moyenne (μ₂): {var_info['Moyenne Post-crise']:.6f}
-        - Écart-type: (calculé)
-        - n₂: 6,808 observations
+        - Écart-type (σ₂): {var_info['Écart-type Post-crise']:.6f}
+        - Erreur type: {var_info['Écart-type Post-crise']/np.sqrt(var_info['n_Post-crise']):.6f}
+        
+        **Différence observée:**
+        - Δμ = μ₁ - μ₂ = {var_info['Moyenne Pré-crise'] - var_info['Moyenne Post-crise']:.6f}
+        - IC 95% = [{var_info['IC 95% Lower']:.6f}, {var_info['IC 95% Upper']:.6f}]
         """)
     
     with col2:
@@ -290,15 +348,32 @@ elif page == "📐 Détail des Calculs":
         
         $$t = \\frac{{μ_1 - μ_2}}{{\\sqrt{{\\frac{{s_1^2}}{{n_1}} + \\frac{{s_2^2}}{{n_2}}}}}}$$
         
-        **Calcul:**
+        **Où:**
+        - μ₁, μ₂ = moyennes pré et post-crise
+        - s₁, s₂ = écarts-types
+        - n₁, n₂ = effectifs
+        
+        **Calcul Numérique:**
         - Δμ = {var_info['Moyenne Pré-crise']:.6f} - {var_info['Moyenne Post-crise']:.6f}
         - Δμ = {var_info['Moyenne Pré-crise'] - var_info['Moyenne Post-crise']:.6f}
+        - SE = {var_info['Erreur Standard']:.6f}
         
-        **Résultat:**
-        - t-statistique: {var_info['t-statistic']:.6f}
-        - p-value: {var_info['p-value']:.10f}
-        - Significatif: ✅ {var_info['Significatif (p<0.05)']}
+        **Résultats Finaux:**
+        - **t-statistique:** {var_info['t-statistic']:.6f}
+        - **p-value:** {var_info['p-value']:.10f}
+        - **Cohen's d:** {var_info["Cohen's d"]:.6f}
+        - **Effet:** {var_info['Effet Size']}
+        - **Conclusion:** {var_info['Significatif (p<0.05)']}
+        
+        ✅ **Interprétation:** La valeur p est {'INFÉRIEURE' if var_info['p-value'] < 0.05 else 'SUPÉRIEURE'} à 0.05
         """)
+    
+    st.markdown("---")
+    st.markdown("### Résumé Statistique Complet")
+    summary_cols = ['Variable', 'n_Pré-crise', 'Moyenne Pré-crise', 'Écart-type Pré-crise',
+                   'n_Post-crise', 'Moyenne Post-crise', 'Écart-type Post-crise',
+                   't-statistic', 'p-value', "Cohen's d", 'Effet Size']
+    st.dataframe(tests_df[summary_cols], use_container_width=True, hide_index=True)
     
     st.markdown("---")
     

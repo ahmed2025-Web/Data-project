@@ -70,8 +70,34 @@ print(f"✅ Observations après nettoyage: {df_clean.shape[0]:,}")
 # ============================================================================
 
 print("\n" + "="*80)
-print("PHASE 3: TESTS STATISTIQUES - COMPARAISON PRÉ/POST-CRISE")
+print("PHASE 3: TESTS STATISTIQUES - T-TEST DE STUDENT")
+print("COMPARAISON PRÉ-CRISE (2005-2010) vs POST-CRISE (2011-2015)")
 print("="*80)
+
+print("\n" + "📊 TEST T DE STUDENT (Comparaison de moyennes)")
+print("\n**HYPOTHÈSES:**")
+print("   H₀ (Hypothèse nulle): Pas de différence significative entre pré et post-crise")
+print("                          μ_pré = μ_post")
+print("   H₁ (Hypothèse alternative): Différence significative entre les périodes")
+print("                                μ_pré ≠ μ_post")
+print("\n**SEUIL DE SIGNIFICATIVITÉ:** α = 0.05")
+print("   Si p-value < 0.05 → On rejette H₀ (différence SIGNIFICATIVE ✅)")
+print("   Si p-value ≥ 0.05 → On ne rejette pas H₀ (pas de différence ❌)")
+
+print("\n**FORMULE DU T-TEST:**")
+print("   t = (μ₁ - μ₂) / √((s₁²/n₁) + (s₂²/n₂))")
+print("   où:")
+print("   - μ₁, μ₂ = moyennes pré/post")
+print("   - s₁, s₂ = écarts-types pré/post")
+print("   - n₁, n₂ = effectifs pré/post")
+
+print("\n**COEFFICIENT D'EFFET (Cohen's d):**")
+print("   d = (μ₁ - μ₂) / s_pooled")
+print("   Interprétation:")
+print("   - |d| < 0.2: Effet très petit")
+print("   - 0.2 ≤ |d| < 0.5: Effet petit")
+print("   - 0.5 ≤ |d| < 0.8: Effet moyen")
+print("   - |d| ≥ 0.8: Effet grand")
 
 results_tests = []
 
@@ -79,34 +105,85 @@ for var in available_vars:
     pre_crise = df_clean[df_clean['periode'] == 'Pré-crise'][var].dropna()
     post_crise = df_clean[df_clean['periode'] == 'Post-crise'][var].dropna()
     
+    # Statistiques descriptives
+    n_pre = len(pre_crise)
+    n_post = len(post_crise)
+    mean_pre = pre_crise.mean()
+    mean_post = post_crise.mean()
+    std_pre = pre_crise.std()
+    std_post = post_crise.std()
+    
+    # T-test
     t_stat, p_value = stats.ttest_ind(pre_crise, post_crise)
     
-    cohens_d = (pre_crise.mean() - post_crise.mean()) / np.sqrt(
-        ((len(pre_crise)-1) * pre_crise.std()**2 + (len(post_crise)-1) * post_crise.std()**2) / 
-        (len(pre_crise) + len(post_crise) - 2)
+    # Cohen's d
+    cohens_d = (mean_pre - mean_post) / np.sqrt(
+        ((n_pre-1) * std_pre**2 + (n_post-1) * std_post**2) / 
+        (n_pre + n_post - 2)
     )
     
+    # Intervalle de confiance 95%
+    se = np.sqrt((std_pre**2/n_pre) + (std_post**2/n_post))
+    ci_lower = (mean_pre - mean_post) - 1.96 * se
+    ci_upper = (mean_pre - mean_post) + 1.96 * se
+    
     significatif = "✅ OUI" if p_value < 0.05 else "❌ NON"
+    effet_size = "Grand (≥0.8)" if abs(cohens_d) >= 0.8 else "Moyen (0.5-0.8)" if abs(cohens_d) >= 0.5 else "Petit (0.2-0.5)" if abs(cohens_d) >= 0.2 else "Très petit (<0.2)"
     
     results_tests.append({
         'Variable': var,
-        'Moyenne Pré-crise': pre_crise.mean(),
-        'Moyenne Post-crise': post_crise.mean(),
-        'Différence (%)': ((post_crise.mean() - pre_crise.mean()) / abs(pre_crise.mean()) * 100) if pre_crise.mean() != 0 else 0,
+        'n_Pré-crise': n_pre,
+        'n_Post-crise': n_post,
+        'Moyenne Pré-crise': mean_pre,
+        'Écart-type Pré-crise': std_pre,
+        'Moyenne Post-crise': mean_post,
+        'Écart-type Post-crise': std_post,
+        'Différence (%)': ((mean_post - mean_pre) / abs(mean_pre) * 100) if mean_pre != 0 else 0,
+        'Erreur Standard': se,
+        'IC 95% Lower': ci_lower,
+        'IC 95% Upper': ci_upper,
         't-statistic': t_stat,
         'p-value': p_value,
         "Cohen's d": cohens_d,
+        'Effet Size': effet_size,
         'Significatif (p<0.05)': significatif
     })
     
-    print(f"\n{'='*60}")
-    print(f"Variable: {var}")
-    print(f"{'='*60}")
-    print(f"Moyenne Pré-crise:  {pre_crise.mean():.6f}")
-    print(f"Moyenne Post-crise: {post_crise.mean():.6f}")
-    print(f"Différence (%):     {((post_crise.mean() - pre_crise.mean()) / abs(pre_crise.mean()) * 100) if pre_crise.mean() != 0 else 0:.2f}%")
-    print(f"p-value:            {p_value:.6f}")
-    print(f"Significatif:       {significatif}")
+    print(f"\n{'='*80}")
+    print(f"VARIABLE: {var.upper()}")
+    print(f"{'='*80}")
+    
+    print(f"\n📊 DONNÉES OBSERVÉES:")
+    print(f"   Pré-crise (n={n_pre}):")
+    print(f"      Moyenne: {mean_pre:.6f}")
+    print(f"      Écart-type: {std_pre:.6f}")
+    print(f"      Min: {pre_crise.min():.6f}, Max: {pre_crise.max():.6f}")
+    
+    print(f"\n   Post-crise (n={n_post}):")
+    print(f"      Moyenne: {mean_post:.6f}")
+    print(f"      Écart-type: {std_post:.6f}")
+    print(f"      Min: {post_crise.min():.6f}, Max: {post_crise.max():.6f}")
+    
+    print(f"\n📈 RÉSULTATS DU TEST:")
+    print(f"   Différence de moyennes: {mean_pre - mean_post:.6f}")
+    print(f"   Variation (%): {((mean_post - mean_pre) / abs(mean_pre) * 100) if mean_pre != 0 else 0:.2f}%")
+    print(f"   Erreur standard: {se:.6f}")
+    print(f"   IC 95%: [{ci_lower:.6f}, {ci_upper:.6f}]")
+    
+    print(f"\n🧪 STATISTIQUES DU TEST:")
+    print(f"   t-statistic: {t_stat:.6f}")
+    print(f"   p-value: {p_value:.10f}")
+    print(f"   Cohen's d: {cohens_d:.6f}")
+    print(f"   Taille d'effet: {effet_size}")
+    
+    print(f"\n✅ CONCLUSION:")
+    print(f"   Différence significative? {significatif}")
+    if p_value < 0.05:
+        print(f"   → REJET de H₀: Les moyennes pré et post-crise sont SIGNIFICATIVEMENT différentes")
+        print(f"   → Les données fournissent une preuve forte contre H₀")
+    else:
+        print(f"   → NON-REJET de H₀: Pas de différence significative détectée")
+        print(f"   → Les données ne fournissent pas assez de preuve contre H₀")
 
 df_results = pd.DataFrame(results_tests)
 df_results.to_csv('03_tests_statistiques_complets.csv', index=False)
