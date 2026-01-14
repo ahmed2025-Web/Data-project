@@ -12,8 +12,6 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-import plotly.graph_objects as go
-import plotly.express as px
 import warnings
 warnings.filterwarnings('ignore')
 
