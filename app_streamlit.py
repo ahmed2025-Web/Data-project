@@ -4,7 +4,6 @@ Streamlit App pour explorer les résultats de l'analyse
 """
 
 import streamlit as st
-import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -171,71 +170,61 @@ if page == "🏠 Accueil":
 # PAGE 2: TABLEAU DE BORD
 # ============================================================================
 
-
 elif page == "📊 Tableau de bord":
-    st.title("📊 Tableau de Bord : Synthèse des Évolutions")
-    st.markdown("Cette page présente les principaux constats visuels sur l'évolution des banques coopératives entre les deux périodes.")
-    variables = ['ass_total', 'ass_trade', 'inc_trade', 'in_roa', 'rt_rwa', 'in_roe', 'in_trade']
-    
-
-    # --- SECTION 2 : VUE D'ENSEMBLE DES DISTRIBUTIONS ---
-    st.header("2️⃣ État des lieux des distributions")
-    st.markdown("""
-    L'utilisation d'une échelle logarithmique permet de visualiser l'ensemble des variables, des plus volumineuses (actifs) 
-    aux plus petites (rentabilité), sur un même plan. Les points blancs indiquent la position des moyennes.
-    """)
-    # Affichage de l'image boxplot log
-    st.image('welch_justification_plot.png', caption="Distribution globale des variables (Échelle Logarithmique)", use_container_width=True)
-
-    st.divider()
-
-    # --- SECTION 3 : EXPLORATION DYNAMIQUE PAR PAYS ---
-    st.header("3️⃣ Statistiques descriptives par zone")
+    st.title("📊 Tableau de Bord Descriptif")
     
     col1, col2 = st.columns(2)
+    
     with col1:
         periode_filter = st.multiselect(
-            "Choisir les périodes :",
+            "Filtrer par période:",
             ["Pré-crise", "Post-crise"],
             default=["Pré-crise", "Post-crise"]
         )
+    
     with col2:
-        top_pays = df_clean['country_code'].unique().tolist()
+        # Obtenir les 10 pays les plus représentés
+        top_pays = df['country_code'].value_counts().head(10).index.tolist()
         pays_filter = st.multiselect(
-            "Filtrer par pays :",
-            sorted(top_pays),
+            "Filtrer par pays (top 10):",
+            top_pays,
             default=top_pays[:3]
         )
     
-    # Filtrage des données selon les choix de l'utilisateur
+    # Filtrer les données
     df_filtered = df_clean[
         (df_clean['periode'].isin(periode_filter)) & 
         (df_clean['country_code'].isin(pays_filter))
     ]
     
-    st.write(f"📈 **Nombre d'observations analysées :** {len(df_filtered):,}")
+    st.write(f"**Observations affichées:** {len(df_filtered):,}")
     
-    # Tableaux de statistiques descriptives
+    # Image de comparaison globale
+    st.markdown("## 📊 Comparaison Pré-crise vs Post-crise")
+    st.image('OPTION1_barres_finales.png', use_container_width=True)
+    
+    # Statistiques descriptives
+    st.markdown("## 📋 Statistiques Descriptives par Période")
+    
     for periode in periode_filter:
-        with st.expander(f"📋 Données chiffrées : {periode}"):
-            stats_df = df_filtered[df_filtered['periode'] == periode][variables].describe().T
-            st.dataframe(stats_df.style.format("{:.4f}"), use_container_width=True)
+        with st.expander(f"📋 {periode}"):
+            stats = df_filtered[df_filtered['periode'] == periode][
+                ['ass_total', 'ass_trade', 'inc_trade', 'in_roa', 'rt_rwa', 'in_roe', 'in_trade']
+            ].describe()
+            st.dataframe(stats, use_container_width=True)
 
 # ============================================================================
 # PAGE 3: ANALYSE STATISTIQUE
 # ============================================================================
 
-
 elif page == "🔬 Analyse Statistique":
-    st.title("🔬 Analyse Statistique - Test t de Welch")
+    st.title("🔬 Analyse Statistique - T-test de Student")
     st.markdown("**Comparaison des variables financières: Pré-crise (2005-2010) vs Post-crise (2011-2015)**")
     
     st.markdown("""
     Cette analyse teste l'hypothèse que la crise financière de 2008 a entraîné des changements significatifs 
-    dans le modèle d'affaires des banques coopératives européennes. Nous utilisons un **test t de Welch** pour 
-    comparer les moyennes. 
-    
-    *Note : Le test de Welch est privilégié ici car il est plus fiable que le test de Student classique lorsque les deux périodes présentent des volatilités (variances) différentes.*
+    dans le modèle d'affaires des banques coopératives européennes. Nous utilisons un t-test de Student pour 
+    comparer les moyennes de chaque variable entre les deux périodes.
     """)
     
     st.markdown("---")
@@ -270,11 +259,7 @@ elif page == "🔬 Analyse Statistique":
     st.markdown("---")
     
     st.markdown("## Vue d'Ensemble - Comparaison Visuelle")
-    # Note: Assurez-vous que ce fichier existe ou remplacez par votre graphique actuel
-    if os.path.exists('04_boxplots_statistiques.png'):
-        st.image('04_boxplots_statistiques.png', use_container_width=True)
-    else:
-        st.info("Visualisation globale issue des fichiers d'analyse.")
+    st.image('OPTION1_barres_finales.png', use_container_width=True)
     
     st.markdown("---")
     
@@ -285,6 +270,7 @@ elif page == "🔬 Analyse Statistique":
                    'Différence (%)', 'p-value', 'Significatif (p<0.05)']
     summary_df = tests_df[summary_cols].copy()
     summary_df['p-value'] = summary_df['p-value'].apply(lambda x: f"{x:.2e}")
+
     
     st.dataframe(summary_df, use_container_width=True, hide_index=True)
     
@@ -296,6 +282,7 @@ elif page == "🔬 Analyse Statistique":
     with st.expander("📊 Tableau Détaillé Complet", expanded=False):
         all_cols = tests_df.columns.tolist()
         detail_df = tests_df[all_cols].copy()
+        # Formater la p-value en notation scientifique
         if 'p-value' in detail_df.columns:
             detail_df['p-value'] = detail_df['p-value'].apply(lambda x: f"{x:.2e}")
         st.dataframe(detail_df, use_container_width=True, hide_index=True)
@@ -303,30 +290,57 @@ elif page == "🔬 Analyse Statistique":
     st.markdown("---")
     
     st.markdown("## Résultats Visuels - Boxplots Interactifs")
+    
     st.markdown("""
     **Explorez les distributions des 7 variables pour chaque période.**
-    Le point dans la boîte représente la **moyenne** (testée par Welch).
+    
+    Hovrez sur les graphiques pour voir les détails statistiques.
     """)
     
-    variables_list = ['ass_total', 'ass_trade', 'inc_trade', 'in_roa', 'rt_rwa', 'in_roe', 'in_trade']
+    # Charger les données brutes pour les boxplots
+    coop_df = pd.read_csv('Theme4_coop_zoom_data.xlsx - coop_zoom_data.csv')
     
-    for var in variables_list:
-        pre_crisis = df_clean[df_clean['periode'] == 'Pré-crise'][var]
-        post_crisis = df_clean[df_clean['periode'] == 'Post-crise'][var]
+    # Convertir les colonnes numériques
+    variables = ['ass_total', 'ass_trade', 'inc_trade', 'in_roa', 'rt_rwa', 'in_roe', 'in_trade']
+    for var in variables:
+        coop_df[var] = pd.to_numeric(coop_df[var].astype(str).str.replace(',', '.'), errors='coerce')
+    
+    # Créer les boxplots interactifs
+    for var in variables:
+        # Séparer pré-crise et post-crise
+        pre_crisis = coop_df[coop_df['year'] <= 2010][var].dropna()
+        post_crisis = coop_df[coop_df['year'] >= 2011][var].dropna()
         
+        # Créer figure Plotly avec boxplots
         fig = go.Figure()
-        fig.add_trace(go.Box(y=pre_crisis, name='Pré-crise (2005-2010)', marker_color='#3498db', boxmean='sd'))
-        fig.add_trace(go.Box(y=post_crisis, name='Post-crise (2011-2015)', marker_color='#e74c3c', boxmean='sd'))
         
-        p_val_row = tests_df[tests_df['Variable'] == var]['p-value'].values[0]
-        sig = "✓ Significatif" if p_val_row < 0.05 else "✗ Non-significatif"
+        fig.add_trace(go.Box(
+            y=pre_crisis,
+            name='Pré-crise (2005-2010)',
+            marker_color='#3498db',
+            boxmean='sd'
+        ))
+        
+        fig.add_trace(go.Box(
+            y=post_crisis,
+            name='Post-crise (2011-2015)',
+            marker_color='#e74c3c',
+            boxmean='sd'
+        ))
+        
+        # Ajouter p-value en titre
+        p_val = tests_df[tests_df['Variable'] == var]['p-value'].values[0]
+        sig = "✓ Significatif" if p_val < 0.05 else "✗ Non-significatif"
         
         fig.update_layout(
-            title=f"<b>{var.upper()}</b> - {sig} (p={p_val_row:.2e})",
+            title=f"<b>{var.upper()}</b> - {sig} (p={p_val:.2e})",
             yaxis_title="Valeur",
-            template='plotly_white',
-            height=400
+            xaxis_title="Période",
+            height=400,
+            showlegend=True,
+            template='plotly_white'
         )
+        
         st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("---")
@@ -337,50 +351,67 @@ elif page == "🔬 Analyse Statistique":
         var = row['Variable']
         p_val = row['p-value']
         diff_pct = row['Différence (%)']
+        cohens_d = row["Cohen's d"]
+        mean_pre = row['Moyenne Pré-crise']
+        mean_post = row['Moyenne Post-crise']
         
-        sig_label = "✅ OUI" if p_val < 0.05 else "❌ NON"
+        sig = "✅ OUI" if p_val < 0.05 else "❌ NON"
         direction = "Baisse" if diff_pct < 0 else "Hausse"
         
-        with st.expander(f"{var} - {sig_label} Significatif"):
+        with st.expander(f"{var} - {sig} Significatif"):
             col1, col2 = st.columns(2)
+            
             with col1:
-                st.write(f"**Moyenne Pré:** {row['Moyenne Pré-crise']:.4f}")
-                st.write(f"**Moyenne Post:** {row['Moyenne Post-crise']:.4f}")
+                st.write(f"**Pré-crise:** {mean_pre:.4f}")
+                st.write(f"**Post-crise:** {mean_post:.4f}")
                 st.write(f"**Variation:** {diff_pct:.2f}% ({direction})")
+            
             with col2:
                 st.write(f"**t-statistic:** {row['t-statistic']:.4f}")
                 st.write(f"**p-value:** {p_val:.2e}")
-                st.write(f"**Cohen's d:** {row['Cohen\'s d']:.4f}")
+                st.write(f"**Cohen's d:** {cohens_d:.4f}")
             
+            # Interprétation
             if p_val < 0.05:
-                st.markdown(f"**Conclusion:** Différence **SIGNIFICATIVE**. Le changement est structurel.")
+                st.markdown(f"""
+                **Conclusion:** Différence **SIGNIFICATIVE** (p < 0.05)
+                
+                La variation de {diff_pct:.2f}% n'est **pas due au hasard**. 
+                Les banques ont changé significativement leur {var.lower()} après la crise.
+                """)
             else:
-                st.markdown(f"**Conclusion:** Pas de différence significative. Les variations peuvent être dues à la volatilité des données.")
-
+                st.markdown(f"""
+                **Conclusion:** Pas de différence significative (p ≥ 0.05)
+                
+                Bien que {var.lower()} ait varié de {diff_pct:.2f}%, cette différence pourrait être due au hasard.
+                """)
+    
     st.markdown("---")
-    st.header(" Conclusion de l'Analyse")
     
-    # Calcul dynamique pour le résumé
-    n_sig = len(tests_df[tests_df['p-value'] < 0.05])
+    st.markdown("## Conclusion Générale")
     
-    st.success(f"**Synthèse :** Sur les {len(tests_df)} variables analysées, **{n_sig} présentent une différence statistiquement significative**.")
+    sig_count = len(tests_df[tests_df['p-value'] < 0.05])
     
     st.markdown(f"""
-    L'analyse via le **test t de Welch** confirme que la crise de 2008 a provoqué une rupture majeure. 
-    Les résultats sont robustes car ils tiennent compte de la forte disparité des données observée sur le graphique des distributions.
+    **{sig_count} sur 7 variables** montrent des différences significatives entre pré-crise et post-crise.
     
-    * **Modèle d'affaires :** La baisse massive des actifs totaux (-73.6%) et de trading (-75.9%) démontre un changement structurel profond des banques coopératives.
-    * **Fiabilité :** Le rejet de l'hypothèse nulle ($H_0$) pour la majorité des variables indique que ces évolutions ne sont pas dues au hasard.
+    **Principaux constats:**
+    - **Réduction drastique des actifs:** Baisse de 73.6% (très significative)
+    - **Réduction des activités de trading:** Baisse de 75.9% 
+    - **Détérioration de la rentabilité:** Baisse du ROA (-13.9%)
+    - **Légère baisse du ratio de capital:** -2.2% (faible mais significative)
+    
+    Ces résultats confirment que la crise financière a fortement impacté le modèle d'affaires 
+    des banques coopératives, particulièrement sur les activités de marché et la taille des actifs.
     """)
-    
-    st.info("💡 Cette analyse fournit une base solide pour affirmer que le secteur a entamé une phase de 'deleveraging' durable après 2010.")
+
 # ============================================================================
 # PAGE 4: DÉTAIL DES CALCULS
 # ============================================================================
 
 elif page == "📐 Détail des Calculs":
     st.title("Détail des Calculs")
-    st.markdown("Formules et résultats du **Test t de Welch** (Variances Inégales)")
+    st.markdown("Formules et résultats des tests statistiques")
     
     st.markdown("## T-test: Pré-crise vs Post-crise")
     
@@ -389,37 +420,63 @@ elif page == "📐 Détail des Calculs":
     with col1:
         st.markdown("### Données Observées")
         var_selected = st.selectbox("Choisir variable:", tests_df['Variable'].tolist())
+        
         var_info = tests_df[tests_df['Variable'] == var_selected].iloc[0]
         
         st.markdown(f"""
         **Pré-crise (n = {int(var_info['n_Pré-crise'])}):**
         - Moyenne (μ₁): {var_info['Moyenne Pré-crise']:.6f}
         - Écart-type (σ₁): {var_info['Écart-type Pré-crise']:.6f}
+        - Erreur type: {var_info['Écart-type Pré-crise']/np.sqrt(var_info['n_Pré-crise']):.6f}
         
         **Post-crise (n = {int(var_info['n_Post-crise'])}):**
         - Moyenne (μ₂): {var_info['Moyenne Post-crise']:.6f}
         - Écart-type (σ₂): {var_info['Écart-type Post-crise']:.6f}
+        - Erreur type: {var_info['Écart-type Post-crise']/np.sqrt(var_info['n_Post-crise']):.6f}
         
         **Différence observée:**
-        - Δμ = {var_info['Moyenne Pré-crise'] - var_info['Moyenne Post-crise']:.6f}
+        - Δμ = μ₁ - μ₂ = {var_info['Moyenne Pré-crise'] - var_info['Moyenne Post-crise']:.6f}
         - IC 95% = [{var_info['IC 95% Lower']:.6f}, {var_info['IC 95% Upper']:.6f}]
         """)
     
     with col2:
-        st.markdown("### Résultat du Test de Welch")
+        st.markdown("### Résultat du Test")
         st.markdown(f"""
-        **Formule utilisée :**
+        **Formule du t-test:**
         
         $$t = \\frac{{μ_1 - μ_2}}{{\\sqrt{{\\frac{{s_1^2}}{{n_1}} + \\frac{{s_2^2}}{{n_2}}}}}}$$
         
-        *Note : Contrairement au t-test de Student, le test de Welch ne suppose pas que les variances des deux groupes soient égales. Chaque groupe est traité séparément, ce qui rend le test plus robuste quand les variances diffèrent.*
+        **Où:**
+        - μ₁, μ₂ = moyennes pré et post-crise
+        - s₁, s₂ = écarts-types
+        - n₁, n₂ = effectifs
+        
+        **Calcul Numérique:**
+        - Δμ = {var_info['Moyenne Pré-crise']:.6f} - {var_info['Moyenne Post-crise']:.6f}
+        - Δμ = {var_info['Moyenne Pré-crise'] - var_info['Moyenne Post-crise']:.6f}
+        - SE = {var_info['Erreur Standard']:.6f}
         
         **Résultats Finaux:**
         - **t-statistique:** {var_info['t-statistic']:.6f}
         - **p-value:** {var_info['p-value']:.2e}
         - **Cohen's d:** {var_info["Cohen's d"]:.6f}
+        - **Effet:** {var_info['Effet Size']}
         - **Conclusion:** {var_info['Significatif (p<0.05)']}
+        
+        ✅ **Interprétation:** La valeur p est {'INFÉRIEURE' if var_info['p-value'] < 0.05 else 'SUPÉRIEURE'} à 0.05
         """)
+    
+    st.markdown("---")
+    st.markdown("### Résumé Statistique Complet")
+    summary_cols = ['Variable', 'n_Pré-crise', 'Moyenne Pré-crise', 'Écart-type Pré-crise',
+                   'n_Post-crise', 'Moyenne Post-crise', 'Écart-type Post-crise',
+                   't-statistic', 'p-value', "Cohen's d", 'Effet Size']
+    calc_df = tests_df[summary_cols].copy()
+    # Formater la p-value en notation scientifique
+    calc_df['p-value'] = calc_df['p-value'].apply(lambda x: f"{x:.2e}")
+    st.dataframe(calc_df, use_container_width=True, hide_index=True)
+    
+    st.markdown("---")
     
     st.markdown("## ANOVA: Comparaison des 4 Clusters")
     

@@ -15,7 +15,6 @@ from sklearn.decomposition import PCA
 import warnings
 warnings.filterwarnings('ignore')
 
-
 # Configuration des graphiques
 plt.style.use('seaborn-v0_8-darkgrid')
 sns.set_palette("husl")
@@ -66,30 +65,6 @@ df_clean = df_clean.dropna(subset=available_vars)
 
 print(f"✅ Observations après nettoyage: {df_clean.shape[0]:,}")
 
-def generate_welch_plot(df_clean, variables):
-    # Configuration du style
-    plt.figure(figsize=(15, 10))
-    sns.set_style("whitegrid")
-    
-    # On "fond" le dataframe pour faciliter l'affichage groupé
-    df_melted = df_clean.melt(id_vars=['periode'], value_vars=variables, 
-                             var_name='Indicateur', value_name='Valeur')
-    
-    # Création du Boxplot
-    ax = sns.boxplot(data=df_melted, x='Indicateur', y='Valeur', hue='periode',
-                    palette={"Pré-crise": "#3498db", "Post-crise": "#e74c3c"},
-                    showmeans=True, # Affiche la moyenne (point crucial pour Welch)
-                    meanprops={"marker":"o", "markerfacecolor":"white", "markeredgecolor":"black", "markersize":"8"})
-    
-    plt.yscale('log') # Utilisation de l'échelle log car ass_total est énorme vs in_roa
-    plt.title("Distributions Financières : Justification du Test de Welch\n(Les points blancs représentent la moyenne)", fontsize=15)
-    plt.ylabel("Valeur (Échelle Logarithmique)")
-    plt.legend(title="Période")
-    
-    plt.savefig('welch_justification_plot.png', dpi=300, bbox_inches='tight')
-    plt.close()
-generate_welch_plot(df_clean, num_cols)
-
 # ============================================================================
 # PHASE 3: TESTS STATISTIQUES (MÉTHODE 1)
 # ============================================================================
@@ -139,7 +114,7 @@ for var in available_vars:
     std_post = post_crise.std()
     
     # T-test
-    t_stat, p_value = stats.ttest_ind(pre_crise, post_crise, equal_var=False)
+    t_stat, p_value = stats.ttest_ind(pre_crise, post_crise)
     
     # Cohen's d
     cohens_d = (mean_pre - mean_post) / np.sqrt(
@@ -213,60 +188,6 @@ for var in available_vars:
 df_results = pd.DataFrame(results_tests)
 df_results.to_csv('03_tests_statistiques_complets.csv', index=False)
 print("\n✅ Résultats sauvegardés: 03_tests_statistiques_complets.csv")
-
-# ============================================================================
-# PHASE 4: GÉNÉRATION DES GRAPHIQUES STATIQUES POUR LE RAPPORT
-# ============================================================================
-
-print("\n" + "="*80)
-print("PHASE 4: GÉNÉRATION DES GRAPHIQUES (Boxplots Statiques)")
-print("="*80)
-
-# Définir le nombre de variables et la taille de la grille
-n_vars = len(num_cols)
-n_cols = 3  # Par exemple, 3 colonnes de graphiques
-n_rows = (n_vars + n_cols - 1) // n_cols # Calculer le nombre de lignes nécessaires
-
-# Créer la figure Matplotlib
-fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 5), sharey=False)
-axes = axes.flatten() # Aplatir pour itérer facilement
-
-# Titre général
-fig.suptitle('Distributions des Variables : Pré-crise vs Post-crise\n(Avec p-value du Test de Welch)', 
-             fontsize=16, fontweight='bold', y=1.02) # y ajuste la hauteur du titre
-
-for i, var in enumerate(num_cols):
-    ax = axes[i]
-
-    # Préparer les données pour Seaborn
-    plot_df = df_clean[[var, 'periode']].dropna()
-
-    # Créer le boxplot Seaborn
-    sns.boxplot(x='periode', y=var, data=plot_df, ax=ax, palette={"Pré-crise": "#3498db", "Post-crise": "#e74c3c"})
-
-    # Ajouter les moyennes (losanges jaunes)
-    mean_pre = df_clean[df_clean['periode'] == 'Pré-crise'][var].mean()
-    mean_post = df_clean[df_clean['periode'] == 'Post-crise'][var].mean()
-    
-    ax.plot([0], [mean_pre], marker='D', markersize=8, color='yellow', markeredgecolor='black')
-    ax.plot([1], [mean_post], marker='D', markersize=8, color='yellow', markeredgecolor='black')
-
-    # Récupérer la p-value du test de Welch
-    p_val = df_results[df_results['Variable'] == var]['p-value'].values[0]
-    
-    # Titre du sous-graphique avec p-value
-    ax.set_title(f"{var.upper()} (p={p_val:.2e})", fontsize=10)
-    ax.set_xlabel('') # Supprimer les labels x pour ne pas surcharger
-    ax.set_ylabel('Valeur')
-
-# Supprimer les axes vides si le nombre de variables n'est pas un multiple de n_cols
-for j in range(i + 1, len(axes)):
-    fig.delaxes(axes[j])
-
-plt.tight_layout(rect=[0, 0, 1, 0.98]) # Ajuster l'espacement pour le titre général
-plt.savefig('04_boxplots_statistiques.png', dpi=300) # Enregistrer l'image
-print("✅ Image '04_boxplots_statistiques.png' générée avec succès !")
-plt.show() # Pour afficher l'image dans le notebook
 
 # ============================================================================
 # PHASE 3B: TESTS SUPPLÉMENTAIRES (ANOVA + CORRÉLATION + SILHOUETTE)
