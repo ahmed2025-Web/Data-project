@@ -27,83 +27,12 @@ st.set_page_config(
  layout="wide"
 )
 
-# CSS personnalisé - Style minimaliste sobres
-st.markdown("""
-<style>
- /* Police et spacing */
- body {
- font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
- font-size: 13px;
- color: #2c3e50;
- }
- 
- /* Headings */
- h1 { color: #34495e; font-size: 28px; font-weight: 600; margin-bottom: 15px; }
- h2 { color: #34495e; font-size: 20px; font-weight: 600; margin-top: 20px; margin-bottom: 12px; }
- h3 { color: #34495e; font-size: 16px; font-weight: 600; }
- 
- /* Texte général */
- p { font-size: 13px; line-height: 1.5; }
- 
- /* Sidebar */
- [data-testid="stSidebar"] {
- background-color: #ecf0f1;
- }
- [data-testid="stSidebar"] h1, 
- [data-testid="stSidebar"] h2 {
- color: #2c3e50;
- font-size: 14px;
- }
- 
- /* Metrics */
- [data-testid="metric-container"] {
- background-color: white;
- border: 1px solid #bdc3c7;
- border-radius: 6px;
- padding: 12px;
- }
- 
- /* Buttons */
- button {
- border-radius: 4px;
- border: 1px solid #bdc3c7;
- font-size: 13px;
- }
- 
- /* Dataframe */
- [data-testid="stDataFrame"] {
- font-size: 12px;
- }
- 
- /* Tabs */
- [data-testid="stTabs"] {
- border: 1px solid #bdc3c7;
- }
- 
- /* Expanders */
- [data-testid="stExpander"] {
- border: 1px solid #bdc3c7;
- border-radius: 4px;
- }
- 
- /* Selectbox et autres inputs */
- select, input {
- font-size: 13px;
- border-radius: 4px;
- }
- 
- /* Remove streamlit branding */
- #MainMenu { visibility: hidden; }
- footer { visibility: hidden; }
- .viewerBadge_container__1QSob { visibility: hidden; }
-</style>
-""", unsafe_allow_html=True)
+# Charger le CSS depuis un fichier séparé
+def load_css(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return f"<style>{f.read()}</style>"
 
-st.set_page_config(
- page_title="Analyse Banques Coopératives",
- page_icon="",
- layout="wide"
-)
+st.markdown(load_css('styles.css'), unsafe_allow_html=True)
 
 # ============================================================================
 # CHARGEMENT DES DONNÉES
@@ -111,22 +40,22 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
- df = pd.read_csv('Theme4_coop_zoom_data.xlsx - coop_zoom_data.csv')
- if 'Unnamed: 10' in df.columns:
- df = df.drop(columns=['Unnamed: 10'])
- 
- num_cols = ['ass_total', 'ass_trade', 'inc_trade', 'in_roa', 'rt_rwa', 'in_roe', 'in_trade']
- for col in num_cols:
- df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce')
- 
- df['periode'] = df['year'].apply(lambda x: 'Pré-crise' if x <= 2010 else 'Post-crise')
- return df
+    df = pd.read_csv('Theme4_coop_zoom_data.xlsx - coop_zoom_data.csv')
+    if 'Unnamed: 10' in df.columns:
+        df = df.drop(columns=['Unnamed: 10'])
+    
+    num_cols = ['ass_total', 'ass_trade', 'inc_trade', 'in_roa', 'rt_rwa', 'in_roe', 'in_trade']
+    for col in num_cols:
+        df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', '.'), errors='coerce')
+    
+    df['periode'] = df['year'].apply(lambda x: 'Pré-crise' if x <= 2010 else 'Post-crise')
+    return df
 
 @st.cache_data
 def load_results():
- tests = pd.read_csv('03_tests_statistiques_complets.csv')
- impacts = pd.read_csv('05_impacts_par_pays.csv')
- return tests, impacts
+    tests = pd.read_csv('03_tests_statistiques_complets.csv')
+    impacts = pd.read_csv('05_impacts_par_pays.csv')
+    return tests, impacts
 
 df = load_data()
 df_clean = df[['institution_name', 'year', 'country_code', 'periode', 
@@ -174,8 +103,8 @@ if page == "Accueil":
  col1, col2 = st.columns(2)
  
  with col1:
- st.markdown("""
- **1. Différences pré/post-crise ?**
+  st.markdown("""
+  **1. Différences pré/post-crise ?**
  Oui - Toutes les variables statistiquement significatives (p < 0.05)
  
  **2. Changements observés ?**
